@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Foti — photo catalog</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root {
+      --bg: #0f1014;
+      --surface: #1a1b22;
+      --surface-2: #23252e;
+      --border: #2f3240;
+      --text: #e6e7eb;
+      --text-dim: #9ca0ad;
+      --accent: #7ab8ff;
+      --accent-strong: #2a83ff;
+      --error: #ff7676;
+      --good: #6dd58c;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: var(--bg); color: var(--text);
+      display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh;
+      overflow: hidden;
+    }
+    .layout { display: grid; grid-template-columns: 220px 1fr; overflow: hidden; min-height: 0; }
+    @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+    header {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo { font-weight: 700; letter-spacing: 0.02em; font-size: 1.05rem; }
+    .logo span { color: var(--accent); }
+    .search { flex: 1; display: flex; gap: 0.5rem; max-width: 720px; }
+    .search input {
+      flex: 1; padding: 0.5rem 0.75rem;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; font-size: 0.95rem;
+    }
+    .search input:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      padding: 0.45rem 0.9rem; border-radius: 6px;
+      background: var(--accent-strong); color: white; border: none;
+      cursor: pointer; font-size: 0.9rem; white-space: nowrap;
+    }
+    .btn:hover { background: var(--accent); }
+    .btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn.secondary:hover { background: var(--border); }
+    .btn.ghost { background: transparent; color: var(--text-dim); border: 1px solid transparent; }
+    .btn.ghost:hover { color: var(--text); border-color: var(--border); }
+
+    .layout {
+      display: grid; grid-template-columns: 220px 1fr;
+      overflow: hidden;
+    }
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      overflow-y: auto; padding: 0.75rem;
+    }
+    .sidebar h3 {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-dim); margin: 1rem 0 0.4rem; font-weight: 600;
+    }
+    .sidebar h3:first-child { margin-top: 0; }
+    .facet {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;
+      font-size: 0.85rem; color: var(--text);
+    }
+    .facet:hover { background: var(--surface-2); }
+    .facet.active { background: var(--accent-strong); color: white; }
+    .facet .n { color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 0.75rem; }
+    .facet.active .n { color: rgba(255,255,255,0.8); }
+
+    main {
+      overflow-y: auto; padding: 1rem; position: relative;
+    }
+    .stats {
+      display: flex; gap: 1.5rem; color: var(--text-dim); font-size: 0.85rem;
+      margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .stats strong { color: var(--text); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.5rem;
+    }
+    .card {
+      position: relative; aspect-ratio: 1 / 1;
+      background: var(--surface); border-radius: 6px; overflow: hidden;
+      cursor: pointer; transition: transform 80ms ease, box-shadow 80ms ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .card.focused { box-shadow: 0 0 0 2px var(--accent), 0 4px 16px rgba(0,0,0,0.3); }
+    .card img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .card .score {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      color: white; padding: 1.25rem 0.5rem 0.4rem;
+      font-size: 0.75rem; font-variant-numeric: tabular-nums;
+    }
+    .empty {
+      text-align: center; color: var(--text-dim); padding: 3rem 1rem;
+    }
+    .empty code {
+      background: var(--surface-2); padding: 2px 6px; border-radius: 4px;
+      color: var(--accent);
+    }
+    .end-marker { text-align: center; padding: 2rem 1rem; color: var(--text-dim); font-size: 0.85rem; }
+    .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 0.5em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      padding: 0.5rem 1rem; border-top: 1px solid var(--border);
+      background: var(--surface); font-size: 0.8rem; color: var(--text-dim);
+      display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .scan-status { display: flex; gap: 0.5rem; align-items: center; }
+
+    .tabs {
+      display: flex; gap: 0.25rem;
+      border-bottom: 1px solid var(--border);
+      padding: 0 1rem; background: var(--surface);
+    }
+    .tab {
+      padding: 0.6rem 1rem; cursor: pointer; color: var(--text-dim);
+      border-bottom: 2px solid transparent; font-size: 0.9rem;
+      background: none; border-left: none; border-right: none; border-top: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab .count { color: var(--text-dim); font-variant-numeric: tabular-nums; margin-left: 0.4em; }
+    .tab.active .count { color: var(--accent-strong); }
+
+    .people-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .person-card {
+      background: var(--surface); border-radius: 8px; padding: 0.75rem;
+      text-align: center; cursor: pointer; transition: transform 80ms, box-shadow 80ms;
+    }
+    .person-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .person-card img {
+      width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+      border-radius: 50%; background: var(--surface-2);
+    }
+    .person-card .label { font-size: 0.85rem; margin-top: 0.5rem; color: var(--text); }
+    .person-card .meta { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem; }
+    .person-card .person-actions {
+      display: flex; gap: 0.25rem; justify-content: center; margin-top: 0.4rem;
+      opacity: 0; transition: opacity 80ms;
+    }
+    .person-card:hover .person-actions { opacity: 1; }
+    .person-card .person-actions .btn { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+    .people-grid.merge-pending .person-card { outline: 2px dashed var(--accent); outline-offset: -2px; }
+
+    .dupes-list { display: grid; gap: 1rem; }
+    .dupe-cluster {
+      background: var(--surface); border-radius: 8px; padding: 0.75rem;
+    }
+    .dupe-cluster header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.5rem; padding: 0; background: none; border: none;
+      font-size: 0.85rem; color: var(--text-dim);
+    }
+    .dupe-cluster .members {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem;
+    }
+    .dupe-cluster .members img {
+      width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px;
+      cursor: pointer; background: var(--surface-2);
+    }
+    .dupe-member { min-width: 0; }
+    .dupe-info {
+      font-size: 0.68rem; color: var(--text-dim); margin-top: 0.25rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .roots-list { display: grid; gap: 0.5rem; max-width: 760px; }
+    .root-row {
+      display: grid; grid-template-columns: 1fr auto auto auto;
+      gap: 0.75rem; align-items: center;
+      padding: 0.75rem 1rem; background: var(--surface); border-radius: 6px;
+    }
+    .root-path { font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+    .root-meta { font-size: 0.75rem; color: var(--text-dim); }
+
+    .toast {
+      position: fixed; bottom: 4rem; right: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 0.75rem 1rem; border-radius: 6px; max-width: 380px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      animation: slideIn 0.2s ease; z-index: 50;
+    }
+    .toast.error { border-color: var(--error); }
+    .toast.good { border-color: var(--good); }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } }
+
+    /* Lightbox / detail view */
+    #lightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 95vw; max-height: 88vh;
+      object-fit: contain; user-select: none;
+    }
+    .lightbox-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+      display: flex; gap: 0.5rem; align-items: center;
+      color: white; pointer-events: none;
+    }
+    .lightbox-bar .filename { flex: 1; font-size: 0.9rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lightbox-bar > * { pointer-events: auto; }
+    .lightbox-bar .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; }
+    .lightbox-bar .btn:hover { background: rgba(255,255,255,0.2); }
+    .lightbox-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.4); color: white;
+      width: 48px; height: 64px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border: none; font-size: 1.5rem;
+      user-select: none;
+    }
+    .lightbox-nav:hover { background: rgba(0,0,0,0.7); }
+    .lightbox-nav.prev { left: 0; border-radius: 0 4px 4px 0; }
+    .lightbox-nav.next { right: 0; border-radius: 4px 0 0 4px; }
+    .lightbox-meta {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 0.75rem 1rem; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+      color: rgba(255,255,255,0.85); font-size: 0.8rem;
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .lightbox-meta dt { color: rgba(255,255,255,0.5); font-size: 0.7rem; text-transform: uppercase; }
+    .lightbox-meta dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .lightbox-meta div { display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Foti<span>.</span></div>
+    <form class="search" id="search-form">
+      <input id="q" placeholder="Search by content: 'beach at sunset', 'red flowers', 'a person smiling'..." autocomplete="off" />
+      <button class="btn" type="submit">Search</button>
+      <input type="color" id="color" value="#7ab8ff" title="Search by dominant color" style="height: 36px; width: 44px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); cursor: pointer;" />
+      <button class="btn ghost" type="button" id="show-all">Clear</button>
+    </form>
+    <select id="sort" class="btn secondary" title="Photos tab sort order" style="padding-right: 1.75rem;">
+      <option value="newest">Newest</option>
+      <option value="oldest">Oldest</option>
+      <option value="best">Best</option>
+      <option value="worst">Worst</option>
+    </select>
+    <button class="btn secondary" id="add-root" title="Add a folder on the server to scan">+ Folder</button>
+  </header>
+  <nav class="tabs">
+    <button class="tab active" data-tab="all">Photos</button>
+    <button class="tab" data-tab="people">People<span class="count" id="tab-count-people"></span></button>
+    <button class="tab" data-tab="dupes">Duplicates<span class="count" id="tab-count-dupes"></span></button>
+    <button class="tab" data-tab="collections">Collections<span class="count" id="tab-count-collections"></span></button>
+    <button class="tab" data-tab="roots">Folders<span class="count" id="tab-count-roots"></span></button>
+    <div style="flex:1"></div>
+    <button class="btn ghost" id="save-query" title="Save the current query as a smart collection" style="margin: 0.35rem 0.5rem 0.35rem auto;">⭐ Save query</button>
+  </nav>
+  <div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Quick</h3>
+    <div class="facet" data-quick="best">Best by aesthetic</div>
+    <div class="facet" data-quick="recent">Most recent</div>
+    <h3>Year</h3>
+    <div id="facet-years"></div>
+    <h3>Tags</h3>
+    <div id="facet-tags"></div>
+    <h3>Camera</h3>
+    <div id="facet-cameras"></div>
+  </aside>
+  <main id="main">
+    <div class="stats" id="stats">Loading catalog...</div>
+    <div class="grid" id="grid"></div>
+    <div class="people-grid" id="people-grid" hidden></div>
+    <div class="dupes-list" id="dupes-list" hidden></div>
+    <div class="roots-list" id="roots-list" hidden></div>
+    <div class="roots-list" id="collections-list" hidden></div>
+    <div class="end-marker" id="end-marker" hidden></div>
+    <div class="empty" id="empty" hidden>
+      <p style="font-size: 1.1rem; color: var(--text);">No photos yet.</p>
+      <p>Use <strong>+ Folder</strong> to add a directory the server should scan, or run<br>
+      <code>foti-backend scan /path/to/photos</code> on the host.</p>
+    </div>
+  </main>
+  </div>
+  <footer>
+    <span id="footer-status">Foti dev preview</span>
+    <div class="scan-status" id="scan-status"></div>
+    <span id="backfill-status" style="opacity:0.7"></span>
+    <span><a href="/docs">API docs</a> · <a href="https://ln-work.tailf79793.ts.net/secrets/drop" rel="nofollow">Secret Drop</a></span>
+  </footer>
+
+  <div id="lightbox" tabindex="0">
+    <button class="lightbox-nav prev" aria-label="Previous">‹</button>
+    <button class="lightbox-nav next" aria-label="Next">›</button>
+    <div class="lightbox-bar">
+      <span class="filename" id="lb-filename"></span>
+      <button class="btn" id="lb-similar">Find similar</button>
+      <button class="btn" id="lb-close">Close (Esc)</button>
+    </div>
+    <img id="lb-img" alt="" />
+    <div class="lightbox-meta" id="lb-meta"></div>
+  </div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const grid = $("#grid"), stats = $("#stats"), empty = $("#empty"),
+      endMarker = $("#end-marker"), footer = $("#footer-status"),
+      scanStatus = $("#scan-status"), main = $("#main");
+const peopleGrid = $("#people-grid"), dupesList = $("#dupes-list"), rootsList = $("#roots-list");
+const lb = $("#lightbox"), lbImg = $("#lb-img"), lbFilename = $("#lb-filename"),
+      lbMeta = $("#lb-meta");
+
+// State
+let tab = "all";              // all | people | dupes | roots
+let mode = { kind: "all" };   // photos-tab sub-mode: {kind:"all"} | {kind:"text",q} | {kind:"similar",id} | {kind:"cluster",id} | {kind:"color",hex}
+let sort = "newest";          // newest | oldest | best | worst
+let filters = { year: null, camera: null };  // applied to mode=all
+let items = [];               // current visible items (photos tab)
+let loading = false;
+let exhausted = false;
+let pageSize = 100;
+let focusedIdx = -1;
+
+function toast(message, kind = "info") {
+  const el = document.createElement("div");
+  el.className = "toast" + (kind === "error" ? " error" : kind === "good" ? " good" : "");
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+async function api(path, opts = {}) {
+  // Strip any userinfo from inherited origin: fetch() rejects URLs that carry
+  // creds. The browser already tracks Basic-auth state across the session.
+  const base = new URL(location.href);
+  base.username = ""; base.password = "";
+  const url = new URL(path, base).href;
+  if (typeof opts.body === "string" && !(opts.headers && opts.headers["Content-Type"])) {
+    opts.headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
+  }
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    let msg;
+    try { msg = (await r.json()).detail || r.statusText; }
+    catch { msg = r.statusText; }
+    throw new Error(`${r.status} ${msg}`);
+  }
+  return r.json();
+}
+
+function thumbUrl(id, size = "small") { return `photos/${id}/thumb/${size}`; }
+
+function renderCards(newItems, { showScore = false, append = false } = {}) {
+  if (!append) {
+    grid.innerHTML = "";
+    items = [];
+    focusedIdx = -1;
+  }
+  for (const it of newItems) {
+    items.push(it);
+    const idx = items.length - 1;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.idx = idx;
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.src = thumbUrl(it.id, "small");
+    img.alt = it.path.split("/").pop();
+    img.onerror = () => { card.style.background = "var(--surface-2)"; };
+    card.appendChild(img);
+    if (showScore && typeof it.score === "number") {
+      const s = document.createElement("div");
+      s.className = "score";
+      s.textContent = `${(it.score * 100).toFixed(1)}%`;
+      card.appendChild(s);
+    }
+    card.addEventListener("click", () => openLightbox(idx));
+    grid.appendChild(card);
+  }
+  empty.hidden = items.length > 0;
+}
+
+async function loadInitial() {
+  loading = true; exhausted = false;
+  endMarker.hidden = true;
+  try {
+    let data;
+    if (mode.kind === "all") {
+      const params = new URLSearchParams({ limit: pageSize, offset: 0, sort });
+      if (filters.year) params.set("year", filters.year);
+      if (filters.camera) params.set("camera", filters.camera);
+      data = await api(`photos?${params.toString()}`);
+      const fparts = [];
+      if (filters.year) fparts.push(`year ${filters.year}`);
+      if (filters.camera) fparts.push(`camera ${filters.camera}`);
+      const filterLabel = fparts.length ? ` · filtered by ${fparts.join(", ")}` : "";
+      stats.innerHTML = `<span><strong>${data.total.toLocaleString()}</strong> photos${filterLabel}</span> <span style="color:var(--text-dim)">sorted by ${sort}</span>`;
+      renderCards(data.items);
+      exhausted = data.items.length >= data.total;
+      footer.textContent = `${data.total.toLocaleString()} total · ${items.length} loaded`;
+    } else if (mode.kind === "text") {
+      data = await api(`search/text?q=${encodeURIComponent(mode.q)}&limit=${pageSize}`);
+      stats.innerHTML = `<span>Results for <strong>${escapeHtml(mode.q)}</strong> — ${data.results.length} matches</span>`;
+      renderCards(data.results, { showScore: true });
+      exhausted = true; // search returns the full ranked set once
+      footer.textContent = `text query "${mode.q}"`;
+    } else if (mode.kind === "similar") {
+      data = await api(`search/similar/${mode.id}?limit=${pageSize}`);
+      stats.innerHTML = `<span>Similar to photo #${mode.id} — ${data.results.length} matches</span>`;
+      renderCards(data.results, { showScore: true });
+      exhausted = true;
+      footer.textContent = `similar to #${mode.id}`;
+    } else if (mode.kind === "color") {
+      data = await api(`search/color?hex=${encodeURIComponent(mode.hex)}&tolerance=80&limit=${pageSize}`);
+      const swatch = `<span style="display:inline-block;width:12px;height:12px;background:#${mode.hex};border-radius:2px;vertical-align:middle;margin-right:0.3em;"></span>`;
+      stats.innerHTML = `<span>${swatch}Photos with dominant color near <code>#${mode.hex}</code> — ${data.results.length} matches</span>`;
+      renderCards(data.results, { showScore: true });
+      exhausted = true;
+      footer.textContent = `color #${mode.hex}`;
+    }
+  } catch (e) {
+    stats.textContent = "Failed to load catalog.";
+    toast(e.message, "error");
+  } finally {
+    loading = false;
+    endMarker.hidden = !exhausted;
+    if (exhausted && items.length > 12) {
+      endMarker.textContent = mode.kind === "all" ? `End of catalog — ${items.length.toLocaleString()} photos.` : `${items.length} results.`;
+    }
+  }
+}
+
+async function loadMore() {
+  if (loading || exhausted || mode.kind !== "all") return;
+  loading = true;
+  try {
+    const params = new URLSearchParams({ limit: pageSize, offset: items.length, sort });
+    if (filters.year) params.set("year", filters.year);
+    if (filters.camera) params.set("camera", filters.camera);
+    const data = await api(`photos?${params.toString()}`);
+    renderCards(data.items, { append: true });
+    exhausted = items.length >= data.total;
+    footer.textContent = `${data.total.toLocaleString()} total · ${items.length} loaded`;
+  } catch (e) { toast(e.message, "error"); }
+  finally {
+    loading = false;
+    endMarker.hidden = !exhausted;
+    if (exhausted && items.length > 12) {
+      endMarker.textContent = `End of catalog — ${items.length.toLocaleString()} photos.`;
+    }
+  }
+}
+
+main.addEventListener("scroll", () => {
+  const remaining = main.scrollHeight - main.scrollTop - main.clientHeight;
+  if (remaining < 600) loadMore();
+});
+
+// --- Lightbox ---
+async function openLightbox(idx) {
+  if (idx < 0 || idx >= items.length) return;
+  focusedIdx = idx;
+  const it = items[idx];
+  // Show the large thumb instantly, swap in the original once it loads.
+  lbImg.src = thumbUrl(it.id, "large");
+  const full = new Image();
+  full.onload = () => {
+    if (focusedIdx === idx) lbImg.src = full.src;  // race-safe: only if still on this photo
+  };
+  full.src = `photos/${it.id}/full`;
+  lbFilename.textContent = it.path.split("/").pop();
+  lb.classList.add("open"); lb.focus();
+  // Lazy-load full metadata
+  try {
+    const p = await api(`photos/${it.id}`);
+    const exif = p.exif_json ? JSON.parse(p.exif_json) : {};
+    const fields = [
+      ["Captured", p.captured_at ? p.captured_at.slice(0, 16).replace("T", " ") : "—"],
+      ["Dim", p.width && p.height ? `${p.width}×${p.height}` : "—"],
+      ["Size", `${(p.size_bytes / 1024 / 1024).toFixed(1)} MB`],
+      ["Camera", exif["Image Model"] || "—"],
+      ["Lens", exif["EXIF LensModel"] || "—"],
+      ["f", exif["EXIF FNumber"] || "—"],
+      ["⏱", exif["EXIF ExposureTime"] || "—"],
+      ["ISO", exif["EXIF ISOSpeedRatings"] || "—"],
+    ];
+    lbMeta.innerHTML = fields.map(([k, v]) =>
+      `<div><dt>${k}</dt><dd>${escapeHtml(String(v))}</dd></div>`
+    ).join("");
+  } catch { lbMeta.innerHTML = ""; }
+}
+function closeLightbox() { lb.classList.remove("open"); }
+function lightboxStep(delta) {
+  const next = focusedIdx + delta;
+  if (next < 0 || next >= items.length) return;
+  openLightbox(next);
+}
+$("#lb-close").onclick = closeLightbox;
+$(".lightbox-nav.prev").onclick = (e) => { e.stopPropagation(); lightboxStep(-1); };
+$(".lightbox-nav.next").onclick = (e) => { e.stopPropagation(); lightboxStep(1); };
+$("#lb-similar").onclick = () => {
+  if (focusedIdx < 0) return;
+  const id = items[focusedIdx].id;
+  closeLightbox();
+  mode = { kind: "similar", id };
+  loadInitial();
+};
+lb.addEventListener("click", (e) => { if (e.target === lb) closeLightbox(); });
+
+document.addEventListener("keydown", (e) => {
+  if (lb.classList.contains("open")) {
+    if (e.key === "Escape") closeLightbox();
+    else if (e.key === "ArrowLeft") lightboxStep(-1);
+    else if (e.key === "ArrowRight") lightboxStep(1);
+    else if (e.key === " ") { e.preventDefault(); closeLightbox(); }
+  } else if (document.activeElement === $("#q")) {
+    // typing — don't intercept arrows
+  } else {
+    if (e.key === "/") { e.preventDefault(); $("#q").focus(); }
+    else if (e.key === "Escape" && mergeSource !== null) {
+      clearMergeMode();
+      toast("Merge cancelled", "info");
+    }
+  }
+});
+
+// --- Tabs ---
+const collectionsList = $("#collections-list");
+function setTab(name) {
+  tab = name;
+  $$(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  grid.hidden = name !== "all";
+  peopleGrid.hidden = name !== "people";
+  dupesList.hidden = name !== "dupes";
+  rootsList.hidden = name !== "roots";
+  collectionsList.hidden = name !== "collections";
+  endMarker.hidden = true;
+  if (name === "all") loadInitial();
+  else if (name === "people") loadPeople();
+  else if (name === "dupes") loadDupes();
+  else if (name === "roots") loadRoots();
+  else if (name === "collections") loadCollections();
+}
+$$(".tab").forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
+
+let mergeSource = null; // cluster_id pending a merge target click
+
+function clearMergeMode() {
+  mergeSource = null;
+  peopleGrid.classList.remove("merge-pending");
+}
+
+async function loadPeople() {
+  try {
+    const data = await api("faces/people?min_size=1&limit=200");
+    stats.innerHTML = `<span><strong>${data.people.length.toLocaleString()}</strong> face clusters (1+ photos each)</span>`;
+    $("#tab-count-people").textContent = data.people.length;
+    peopleGrid.innerHTML = "";
+    for (const p of data.people) {
+      const card = document.createElement("div");
+      card.className = "person-card";
+      card.dataset.cluster = p.cluster_id;
+      card.innerHTML = `
+        <img loading="lazy" src="faces/${p.sample_face_id}/crop" alt="">
+        <div class="label">${escapeHtml(p.person_name || `Cluster #${p.cluster_id}`)}</div>
+        <div class="meta">${p.face_count} face${p.face_count === 1 ? "" : "s"} · ${p.photo_count} photo${p.photo_count === 1 ? "" : "s"}</div>
+        <div class="person-actions">
+          <button class="btn ghost" data-action="name-cluster" title="${p.person_name ? "Rename" : "Name"} this person">✎</button>
+          <button class="btn ghost" data-action="merge-cluster" title="Merge into another person: click here, then click the target card">⇒</button>
+          ${p.person_id ? `<button class="btn ghost" data-action="unname-cluster" title="Remove this name (the cluster stays)">✕</button>` : ""}
+        </div>
+      `;
+      card.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-action]");
+        if (btn) {
+          e.stopPropagation();
+          if (btn.dataset.action !== "merge-cluster") clearMergeMode();
+          try {
+            if (btn.dataset.action === "name-cluster") {
+              const name = prompt("Name for this person:", p.person_name || "");
+              if (!name || !name.trim()) return;
+              await api(`faces/cluster/${p.cluster_id}/name`, {
+                method: "POST", body: JSON.stringify({ name: name.trim() }) });
+              toast(`Named "${name.trim()}"`, "good");
+              loadPeople();
+            } else if (btn.dataset.action === "unname-cluster") {
+              if (!confirm(`Remove the name "${p.person_name}"? The cluster stays, just unnamed.`)) return;
+              await api(`persons/${p.person_id}`, { method: "DELETE" });
+              toast(`Removed name "${p.person_name}"`, "good");
+              loadPeople();
+            } else if (btn.dataset.action === "merge-cluster") {
+              mergeSource = p.cluster_id;
+              peopleGrid.classList.add("merge-pending");
+              toast(`Merging cluster #${p.cluster_id} — click the person it belongs to (Esc cancels)`, "info");
+            }
+          } catch (err) { toast(err.message, "error"); }
+          return;
+        }
+        if (mergeSource !== null && mergeSource !== p.cluster_id) {
+          const src = mergeSource;
+          clearMergeMode();
+          try {
+            const r = await api(`faces/cluster/${src}/merge`, {
+              method: "POST", body: JSON.stringify({ target_cluster_id: p.cluster_id }) });
+            toast(`Merged: ${r.faces_moved} faces moved into cluster #${p.cluster_id}`, "good");
+            loadPeople();
+          } catch (err) { toast(err.message, "error"); }
+          return;
+        }
+        clearMergeMode();
+        setTab("all");
+        loadCluster(p.cluster_id);
+      });
+      peopleGrid.appendChild(card);
+    }
+    footer.textContent = `${data.people.length} people`;
+  } catch (e) { toast(e.message, "error"); }
+}
+
+async function loadCluster(cluster_id) {
+  try {
+    const data = await api(`faces/cluster/${cluster_id}`);
+    stats.innerHTML = `<span>Cluster #${cluster_id} — ${data.photos.length} photos</span>`;
+    renderCards(data.photos);
+    exhausted = true;
+    endMarker.hidden = false;
+    endMarker.textContent = `${data.photos.length} photo${data.photos.length === 1 ? "" : "s"} in this cluster.`;
+    footer.textContent = `cluster #${cluster_id}`;
+  } catch (e) { toast(e.message, "error"); }
+}
+
+async function loadRoots() {
+  try {
+    const data = await api("roots");
+    stats.innerHTML = `<span><strong>${data.length}</strong> scan root${data.length === 1 ? "" : "s"} configured</span>`;
+    $("#tab-count-roots").textContent = data.length;
+    rootsList.innerHTML = "";
+    if (!data.length) {
+      const empty = document.createElement("div");
+      empty.style.color = "var(--text-dim)";
+      empty.innerHTML = "No folders added yet. Use <strong>+ Folder</strong> in the header to add one.";
+      rootsList.appendChild(empty);
+      footer.textContent = "no roots";
+      return;
+    }
+    for (const r of data) {
+      const row = document.createElement("div");
+      row.className = "root-row";
+      const lastScan = r.last_scan ? new Date(r.last_scan).toLocaleString() : "never";
+      row.innerHTML = `
+        <div>
+          <div class="root-path">${escapeHtml(r.path)}</div>
+          <div class="root-meta">Added ${new Date(r.added_at).toLocaleDateString()} · Last scan: ${escapeHtml(lastScan)}</div>
+        </div>
+        <button class="btn" data-action="rescan" data-id="${r.id}">Rescan</button>
+        <button class="btn ghost" data-action="faces" data-id="${r.id}">Index faces</button>
+        <button class="btn ghost" data-action="remove" data-id="${r.id}" title="Remove root (keeps photos in catalog)">✕</button>
+      `;
+      rootsList.appendChild(row);
+    }
+    footer.textContent = `${data.length} roots`;
+  } catch (e) { toast(e.message, "error"); }
+}
+
+rootsList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  try {
+    if (action === "rescan") {
+      const job = await api(`scan/${id}`, { method: "POST" });
+      toast(`Scan #${job.id} queued`, "good");
+      pollJob(job.id);
+    } else if (action === "faces") {
+      toast("Indexing faces — this can take a while...", "info");
+      const r = await api("faces/index?batch_size=1000", { method: "POST" });
+      toast(`Face index: ${r.faces_found} faces · ${r.clusters_created} new clusters`, "good");
+    } else if (action === "remove") {
+      if (!confirm("Remove this scan root? Photos already in the catalog stay.")) return;
+      await api(`roots/${id}`, { method: "DELETE" });
+      toast("Root removed", "good");
+      loadRoots();
+    }
+  } catch (e) { toast(e.message, "error"); }
+});
+
+async function loadDupes() {
+  try {
+    stats.textContent = "Finding duplicates...";
+    const data = await api("duplicates?threshold=5&limit=200");
+    stats.innerHTML = `<span><strong>${data.clusters.length.toLocaleString()}</strong> duplicate groups (threshold ${data.threshold} bits)</span>`;
+    $("#tab-count-dupes").textContent = data.clusters.length;
+    dupesList.innerHTML = "";
+    for (const cluster of data.clusters) {
+      const el = document.createElement("div");
+      el.className = "dupe-cluster";
+      el.innerHTML = `
+        <header>
+          <span>${cluster.size} similar photos · cluster #${cluster.cluster_id}</span>
+          <button class="btn ghost" data-action="ignore" title="Not duplicates / leave them — hide this group permanently">Ignore</button>
+        </header>
+        <div class="members"></div>
+      `;
+      el.querySelector('button[data-action="ignore"]').addEventListener("click", async () => {
+        try {
+          await api("duplicates/ignore", { method: "POST",
+            body: JSON.stringify({ photo_ids: cluster.photos.map(p => p.id) }) });
+          el.remove();
+          const remaining = dupesList.querySelectorAll(".dupe-cluster").length;
+          $("#tab-count-dupes").textContent = remaining;
+          stats.innerHTML = `<span><strong>${remaining.toLocaleString()}</strong> duplicate groups (threshold ${data.threshold} bits)</span>`;
+          footer.textContent = `${remaining} duplicate groups`;
+          toast("Group hidden — it won't be shown as duplicates again", "good");
+        } catch (err) { toast(err.message, "error"); }
+      });
+      const members = el.querySelector(".members");
+      cluster.photos.forEach((ph, i) => {
+        const cell = document.createElement("div");
+        cell.className = "dupe-member";
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.src = thumbUrl(ph.id, "small");
+        img.alt = ph.path.split("/").pop();
+        img.addEventListener("click", () => {
+          // Open in lightbox by mounting these as items
+          items = cluster.photos;
+          openLightbox(i);
+        });
+        const info = document.createElement("div");
+        info.className = "dupe-info";
+        const mp = ph.width && ph.height ? `${ph.width}×${ph.height}` : "?";
+        const kb = ph.size_bytes ? `${(ph.size_bytes / 1024 / 1024).toFixed(1)} MB` : "";
+        info.innerHTML = `${escapeHtml(ph.path.split("/").pop())}<br>${mp} ${kb}`;
+        info.title = ph.path;
+        cell.appendChild(img);
+        cell.appendChild(info);
+        members.appendChild(cell);
+      });
+      dupesList.appendChild(el);
+    }
+    footer.textContent = `${data.clusters.length} duplicate groups`;
+  } catch (e) { toast(e.message, "error"); }
+}
+
+// --- Search ---
+$("#search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const q = $("#q").value.trim();
+  if (q) mode = { kind: "text", q }; else mode = { kind: "all" };
+  setTab("all");
+});
+$("#show-all").addEventListener("click", () => { $("#q").value = ""; mode = { kind: "all" }; setTab("all"); });
+$("#sort").addEventListener("change", (e) => { sort = e.target.value; if (tab === "all" && mode.kind === "all") loadInitial(); });
+$("#color").addEventListener("change", (e) => {
+  const hex = e.target.value.replace("#", "");
+  mode = { kind: "color", hex };
+  setTab("all");
+});
+
+// --- Folder add ---
+$("#add-root").addEventListener("click", async () => {
+  const path = prompt("Server-side folder path to add to the catalog\n(e.g. /home/electruck/Pictures):");
+  if (!path) return;
+  try {
+    const root = await api("roots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+    toast(`Added: ${root.path}`, "good");
+    const job = await api(`scan/${root.id}`, { method: "POST" });
+    pollJob(job.id);
+  } catch (e) { toast(e.message, "error"); }
+});
+
+// Backfill status poller — runs every 10 s and only shows itself when
+// embeddings are missing. Once everything is embedded the badge clears.
+async function tickBackfill() {
+  const badge = document.getElementById("backfill-status");
+  if (!badge) return;
+  try {
+    const s = await api("backfill/status");
+    if (s.missing > 0) {
+      badge.textContent = `CLIP backfill: ${s.with_embedding.toLocaleString()}/${s.total_photos.toLocaleString()} (${s.percent_done}%)`;
+      badge.style.opacity = "0.7";
+    } else {
+      badge.textContent = "";
+    }
+  } catch (e) { /* silent */ }
+}
+setInterval(tickBackfill, 10000);
+tickBackfill();
+
+async function pollJob(jobId) {
+  const tick = async () => {
+    try {
+      const job = await api(`scan/${jobId}`);
+      const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+      scanStatus.innerHTML = `<span class="loading"></span>Scan #${jobId}: ${job.processed}/${job.total} (${pct}%)`;
+      if (job.state === "done") {
+        scanStatus.innerHTML = `<span style="color: var(--good)">✓ Scan #${jobId} done — ${job.processed} photos</span>`;
+        setTimeout(() => scanStatus.innerHTML = "", 5000);
+        toast(`Scan done — ${job.processed} photos indexed`, "good");
+        if (mode.kind === "all") loadInitial();
+      } else if (job.state === "failed") {
+        scanStatus.innerHTML = `<span style="color: var(--error)">✗ Scan #${jobId} failed</span>`;
+        toast(`Scan failed: ${job.error}`, "error");
+      } else {
+        setTimeout(tick, 1500);
+      }
+    } catch (e) { /* drop */ }
+  };
+  tick();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function currentQuery() {
+  const q = { sort, filters: { ...filters } };
+  if (mode.kind === "text")      { q.kind = "text"; q.q = mode.q; }
+  else if (mode.kind === "color") { q.kind = "color"; q.hex = "#" + mode.hex; q.tolerance = 80; }
+  else if (mode.kind === "similar") { q.kind = "similar"; q.photo_id = mode.id; }
+  else if (mode.kind === "cluster") { q.kind = "cluster"; q.cluster_id = mode.id; }
+  else if (filters.year || filters.camera) { q.kind = "filter"; }
+  else return null;
+  return q;
+}
+
+$("#save-query").addEventListener("click", async () => {
+  const q = currentQuery();
+  if (!q) { toast("Apply a search, filter, or color first.", "info"); return; }
+  const name = prompt("Name for this collection:",
+                      q.kind === "text" ? q.q : q.kind);
+  if (!name) return;
+  try {
+    await api("collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, query: q }),
+    });
+    toast("Saved.", "good");
+  } catch (e) { toast(e.message, "error"); }
+});
+
+async function loadCollections() {
+  try {
+    const data = await api("collections");
+    stats.innerHTML = `<span><strong>${data.items.length}</strong> saved collection${data.items.length === 1 ? "" : "s"}</span>`;
+    $("#tab-count-collections").textContent = data.items.length;
+    collectionsList.innerHTML = "";
+    if (!data.items.length) {
+      const empty = document.createElement("div");
+      empty.style.color = "var(--text-dim)";
+      empty.innerHTML = 'No saved collections. Run a search or filter on the Photos tab and click <strong>⭐ Save query</strong>.';
+      collectionsList.appendChild(empty);
+      return;
+    }
+    for (const c of data.items) {
+      const q = JSON.parse(c.query_json);
+      const summary = q.kind === "text" ? `"${q.q}"`
+                   : q.kind === "color" ? `color ${q.hex}`
+                   : q.kind === "similar" ? `similar to #${q.photo_id}`
+                   : q.kind === "cluster" ? `cluster #${q.cluster_id}`
+                   : `filter ${JSON.stringify(q.filters)}`;
+      const row = document.createElement("div");
+      row.className = "root-row";
+      row.innerHTML = `
+        <div>
+          <div class="root-path">${escapeHtml(c.name)}</div>
+          <div class="root-meta">${escapeHtml(summary)} · saved ${new Date(c.created_at).toLocaleDateString()}</div>
+        </div>
+        <button class="btn" data-id="${c.id}" data-action="open">Open</button>
+        <button class="btn ghost" data-id="${c.id}" data-action="export" title="Write XMP sidecars (tags, caption, rating, persons) for this collection">Export XMP</button>
+        <button class="btn ghost" data-id="${c.id}" data-action="delete">✕</button>
+      `;
+      collectionsList.appendChild(row);
+    }
+  } catch (e) { toast(e.message, "error"); }
+}
+
+collectionsList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === "open") {
+    try {
+      const data = await api(`collections/${id}/photos`);
+      setTab("all");
+      stats.innerHTML = `<span>Collection <strong>${escapeHtml(data.name)}</strong> — ${data.results.length} photos</span>`;
+      renderCards(data.results);
+      exhausted = true; endMarker.hidden = false;
+      endMarker.textContent = `${data.results.length} photo${data.results.length === 1 ? "" : "s"}.`;
+      footer.textContent = `collection "${data.name}"`;
+    } catch (e) { toast(e.message, "error"); }
+  } else if (btn.dataset.action === "export") {
+    try {
+      const data = await api(`collections/${id}/photos`);
+      if (!data.results.length) { toast("Collection resolves to 0 photos", "error"); return; }
+      const outDir = prompt(`Export ${data.results.length} XMP sidecars to which folder on the server?`,
+                            "/tmp/foti-xmp-export");
+      if (!outDir) return;
+      const r = await api("export/xmp", { method: "POST",
+        body: JSON.stringify({ out_dir: outDir, photo_ids: data.results.map(p => p.id) }) });
+      toast(`XMP export: ${r.written} written, ${r.failed} failed → ${r.out_dir}`,
+            r.failed ? "error" : "good");
+    } catch (e) { toast(e.message, "error"); }
+  } else if (btn.dataset.action === "delete") {
+    if (!confirm("Delete this collection?")) return;
+    try { await api(`collections/${id}`, { method: "DELETE" }); loadCollections(); }
+    catch (e) { toast(e.message, "error"); }
+  }
+});
+
+async function loadFacets() {
+  try {
+    const f = await api("facets");
+    const tags = await api("tags?limit=20").catch(() => ({ labels: [] }));
+    const ye = $("#facet-years"), ce = $("#facet-cameras"), te = $("#facet-tags");
+    ye.innerHTML = ""; ce.innerHTML = ""; te.innerHTML = "";
+
+    for (const t of tags.labels.slice(0, 14)) {
+      const el = document.createElement("div");
+      el.className = "facet";
+      el.dataset.tag = t.label;
+      el.innerHTML = `<span>${escapeHtml(t.label)}</span><span class="n">${t.count}</span>`;
+      el.addEventListener("click", async () => {
+        try {
+          const data = await api(`tags/${encodeURIComponent(t.label)}?limit=200`);
+          setTab("all");
+          stats.innerHTML = `<span>Tag <strong>${escapeHtml(t.label)}</strong> — ${data.results.length} photos</span>`;
+          renderCards(data.results, { showScore: true });
+          exhausted = true; endMarker.hidden = false;
+          endMarker.textContent = `${data.results.length} tagged photo${data.results.length === 1 ? "" : "s"}.`;
+          footer.textContent = `tag "${t.label}"`;
+        } catch (e) { toast(e.message, "error"); }
+      });
+      te.appendChild(el);
+    }
+    if (!tags.labels.length) te.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;padding:0.25rem 0.5rem;">not indexed yet</div>';
+
+    for (const y of f.years.slice(0, 12)) {
+      const el = document.createElement("div");
+      el.className = "facet";
+      el.dataset.year = y.year;
+      if (filters.year === y.year) el.classList.add("active");
+      el.innerHTML = `<span>${y.year}</span><span class="n">${y.count}</span>`;
+      el.addEventListener("click", () => {
+        filters.year = filters.year === y.year ? null : y.year;
+        loadFacets(); setTab("all");
+      });
+      ye.appendChild(el);
+    }
+    if (!f.years.length) ye.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;padding:0.25rem 0.5rem;">no dated photos</div>';
+    for (const c of f.cameras.slice(0, 10)) {
+      const el = document.createElement("div");
+      el.className = "facet";
+      el.dataset.camera = c.camera;
+      if (filters.camera === c.camera) el.classList.add("active");
+      el.innerHTML = `<span>${escapeHtml(c.camera)}</span><span class="n">${c.count}</span>`;
+      el.addEventListener("click", () => {
+        filters.camera = filters.camera === c.camera ? null : c.camera;
+        loadFacets(); setTab("all");
+      });
+      ce.appendChild(el);
+    }
+    if (!f.cameras.length) ce.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;padding:0.25rem 0.5rem;">no EXIF camera data</div>';
+  } catch (e) { /* drop */ }
+}
+
+$$(".facet[data-quick]").forEach(el => {
+  el.addEventListener("click", () => {
+    if (el.dataset.quick === "best") { sort = "best"; $("#sort").value = "best"; }
+    else if (el.dataset.quick === "recent") { sort = "newest"; $("#sort").value = "newest"; }
+    setTab("all");
+  });
+});
+
+loadFacets();
+loadInitial();
+</script>
+</body>
+</html>

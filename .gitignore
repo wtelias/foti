@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+.uv/
+*.egg-info/
+build/
+dist/
+
+# Node / Tauri / Rust
+node_modules/
+ui/dist/
+ui/.svelte-kit/
+ui/src-tauri/target/
+target/
+
+# Foti runtime data
+data/
+models/cache/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.onnx
+!models/*.placeholder
+.foti/
+
+# Runtime logs (never commit — they leak local paths)
+*.log
+
+# Local git worktrees
+.worktrees/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env
+.env
+.env.local
+.env.production

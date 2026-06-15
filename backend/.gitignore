@@ -1,0 +1,5 @@
+# Backend-specific ignores
+foti-backend.log
+foti-backend.log.*
+.env.production
+.venv/
