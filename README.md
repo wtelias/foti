@@ -19,7 +19,7 @@ It's a Linux-native, open-source take on the workflows commercial tools like Exc
 
 **Alpha, and genuinely usable.** It runs a real ~97k-photo catalog day to day: content/text search, image similarity, face clustering + naming, duplicate detection, colour search, aesthetic ranking and XMP sidecar export all work end to end. APIs and the on-disk schema may still change between versions.
 
-The UI today is a single-page web app served by the backend (open `http://127.0.0.1:7777` in a browser). A native desktop shell (Tauri) is on the roadmap, not built yet — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The UI is a single-page web app served by the backend (open `http://127.0.0.1:7777` in a browser). There is also a native desktop shell (Tauri) in [`ui/desktop`](ui/desktop) that wraps that UI and manages a local backend for you — see [Desktop app](#desktop-app) below.
 
 ## Features
 
@@ -69,6 +69,22 @@ docker run --rm -p 7777:7777 \
 ```
 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md) for GPU passthrough, reverse-proxy + HTTP Basic auth, and running as a systemd service.
+
+### Desktop app
+
+A native desktop shell (Tauri 2) lives in [`ui/desktop`](ui/desktop). It is a thin
+wrapper: on launch it starts a local `foti-backend` on a private loopback port
+(no login prompt), waits for it, then shows the web UI in a native window — and
+shuts the backend down when you close it. The heavy ML dependencies are **not**
+bundled, so it expects `foti-backend` to be installed (see [Install](#install)).
+
+```bash
+cd ui/desktop
+cargo tauri build      # → src-tauri/target/release/bundle/ (AppImage, .deb, .rpm)
+```
+
+> On distributions whose libraries use modern ELF relocations (e.g. Arch), build
+> the AppImage with `NO_STRIP=true` so linuxdeploy doesn't choke on `.relr.dyn`.
 
 ## Develop
 

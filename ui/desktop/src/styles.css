@@ -1,0 +1,75 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #0f0f0f;
+  background-color: #f6f6f6;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.splash {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  text-align: center;
+  user-select: none;
+}
+
+.splash h1 {
+  margin: 0.2em 0 0;
+  font-size: 2.4em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.splash p {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.splash p.error {
+  opacity: 1;
+  color: #c0392b;
+  max-width: 28em;
+  line-height: 1.5;
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 4px solid rgba(127, 127, 127, 0.25);
+  border-top-color: #396cd8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 0.4em;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #1f1f1f;
+  }
+  .splash p.error {
+    color: #ff7062;
+  }
+}

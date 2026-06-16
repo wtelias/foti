@@ -21,11 +21,15 @@ the current frontier is subject to change.
 - [x] Colour search (dominant-colour backfill + query)
 - [x] XMP sidecar export (tags / caption / rating / people)
 - [x] Verified at scale on a ~97k-photo catalog (100% faces / colour / aesthetic coverage)
+- [x] Native desktop shell (Tauri 2) wrapping the web UI — `ui/desktop`, starts and
+      stops a local backend itself, no login prompt
+- [x] Desktop packaging: AppImage / `.deb` / `.rpm` via `cargo tauri build`
 
 ## Next
 
-- [ ] Native desktop shell (Tauri 2 + Svelte) wrapping the web UI
-- [ ] One-command packaging: AppImage / Flatpak / `.deb` / AUR
+- [ ] Flatpak / AUR packaging
+- [ ] Bundle (or auto-install) the Python backend with the desktop app so it is a
+      true one-download install (today the desktop app expects `foti-backend` on `PATH`)
 - [ ] Stronger aesthetic head (trained NIMA/LAION MLP) as a drop-in upgrade
 - [ ] Smart Collections (saved searches)
 - [ ] Composition search (rule of thirds, leading lines — open research)
